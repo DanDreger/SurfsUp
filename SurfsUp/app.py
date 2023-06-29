@@ -45,10 +45,10 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     print("Server received request for 'Home' page...")
-    return "<div><h1>Surfs Up Dude</h1><h3>Welcome to the only app you need to plan your trip</h3><h3>Here are the available routes</h3><p>/api/v1.0/precipitation</p><p>/api/v1.0/stations</p><p>/api/v1.0/tobs</p><p>/api/v1.0/[start]</p><p>/api/v1.0/[end]</p></div>"
+    return "<div><h1>Surfs Up Dude</h1><h3>Welcome to the only app you need to plan your trip</h3><h3>Here are the available routes</h3><p>/api/v1.0/precipitation</p><p>/api/v1.0/stations</p><p>/api/v1.0/tobs</p><p>/api/v1.0/[start]</p><p>/api/v1.0/[start]/[end]</p></div><div><h4>Note: when adding dates after /api/v1.0/ you must use the format <b>yyyy-mm-dd</b></h4></div>"
 
 
-# 4. Define what to do when a user hits the various routes
+#Define what to do when a user hits the precipitation route
 @app.route("/api/v1.0/precipitation")
 def precip():
     session = Session(engine)
@@ -60,7 +60,7 @@ def precip():
     return jsonify(precipitation=precip)
     session.close()
 
-
+#Define what to do when a user hits the station route
 @app.route("/api/v1.0/stations")
 def stations():
     session = Session(engine)
@@ -69,24 +69,33 @@ def stations():
     return jsonify(stations=stations)
     session.close()
 
-
+#Define what to do when a user hits the tobs route
 @app.route("/api/v1.0/tobs")
 def tobs():
     session = Session(engine)
-
     prev_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
     data = session.query(Measurement.tobs, Measurement.date).filter(and_(Measurement.station == 'USC00519281'), (Measurement.date >= prev_year)).all()
     tobs = {date: tobs for date, tobs in data}
     return jsonify(temperatures_for_station_USC00519281=tobs)
     session.close()
 
+#Define what to do when a user adds a start and end date
+@app.route("/api/v1.0/<start>/<end>")
+def startEndPath(start, end):
+    session = Session(engine)
+    data = session.query( func.min(Measurement.tobs), func.max(Measurement.tobs),  func.avg(Measurement.tobs)).filter(and_(Measurement.date >= start, Measurement.date <= end )).all()
+    tobs = list(np.ravel(data))
+    return jsonify(temperature=tobs)
+    session.close()
+
+#Define what to do when a user adds just a start date
 @app.route("/api/v1.0/<start>")
 def startPath(start):
     session = Session(engine)
-
     data = session.query( func.min(Measurement.tobs), func.max(Measurement.tobs),  func.avg(Measurement.tobs)).filter(Measurement.date >= start).all()
     tobs = list(np.ravel(data))
     return jsonify(temperature=tobs)
+    session.close()
 
 
 if __name__ == "__main__":
