@@ -56,8 +56,8 @@ def precip():
     prev_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
 
     results = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date >= prev_year).all()
-    precip = list(np.ravel(results))
-    return jsonify(precip=precip)
+    precip = {date: prcp for date, prcp in results}
+    return jsonify(precipitation=precip)
     session.close()
 
 
@@ -65,7 +65,7 @@ def precip():
 def stations():
     session = Session(engine)
     data = session.query(Station.station, Station.name).all()
-    stations = list(np.ravel(data))
+    stations = {station: name for station, name in data}
     return jsonify(stations=stations)
     session.close()
 
@@ -76,20 +76,17 @@ def tobs():
 
     prev_year = dt.date(2017, 8, 23) - dt.timedelta(days=365)
     data = session.query(Measurement.tobs, Measurement.date).filter(and_(Measurement.station == 'USC00519281'), (Measurement.date >= prev_year)).all()
-
-    station_data = list(np.ravel(data))
-    return jsonify(station_data=station_data)
+    tobs = {date: tobs for date, tobs in data}
+    return jsonify(temperatures_for_station_USC00519281=tobs)
     session.close()
 
 @app.route("/api/v1.0/<start>")
-def start():
-    print("Server received request for 'start' page...")
-    return "start Page"
+def startPath(start):
+    session = Session(engine)
 
-@app.route("/api/v1.0/<end>")
-def end():
-    print("Server received request for 'End' page...")
-    return "End Page"
+    data = session.query( func.min(Measurement.tobs), func.max(Measurement.tobs),  func.avg(Measurement.tobs)).filter(Measurement.date >= start).all()
+    tobs = list(np.ravel(data))
+    return jsonify(temperature=tobs)
 
 
 if __name__ == "__main__":
